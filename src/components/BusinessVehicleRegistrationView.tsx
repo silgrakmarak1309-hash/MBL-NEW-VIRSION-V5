@@ -81,54 +81,55 @@ export const BusinessVehicleRegistrationView: React.FC<BusinessVehicleRegistrati
 
   // 1. Shop Submit Handler Fix
   const handleShopSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const validUserId = isUuid(currentUser?.id) ? currentUser.id : null;
-      const payload = {
-        user_id: validUserId,
-        user_name: currentUser?.full_name || shopOwner.trim(),
-        user_phone: currentUser?.phone || shopPhone.trim(),
-        shop_name: shopName.trim(),
-        owner_name: shopOwner.trim(),
-        category: shopCategory,
-        phone: shopPhone.trim(),
-        state: 'Meghalaya',
-        district: shopDistrict,
-        block: shopBlock,
-        village: shopVillage.trim(),
-        shop_address: shopAddress.trim(),
-      };
+  e.preventDefault();
+  setSubmitting(true);
+  try {
+    const validUserId = isUuid(currentUser?.id) ? currentUser.id : null;
+    const payload = {
+      user_id: validUserId,
+      user_name: currentUser?.full_name || shopOwner.trim(),
+      user_phone: currentUser?.phone || shopPhone.trim(),
+      shop_name: shopName.trim(),
+      owner_name: shopOwner.trim(),
+      category: shopCategory,
+      phone: shopPhone.trim(),
+      state: 'Meghalaya',
+      district: shopDistrict,
+      block: shopBlock,
+      village: shopVillage.trim(),
+      shop_address: shopAddress.trim(),
+      account_status: 'active',
+      plan_name: 'Monthly Basic',
+      status: 'pending'
+    };
 
-      const { data, error } = await supabase
-        .from('shop_registrations')
-        .insert([payload])
-        .select();
+    // Direct Database Insert (No unknown columns)
+    const { data, error } = await supabase
+      .from('shop_registrations')
+      .insert([payload])
+      .select();
 
-      if (error) throw error;
+    if (error) throw error;
 
-      if (onSubmitShop) {
-        try {
-          await onSubmitShop({
-            id: data && data[0]?.id ? String(data[0].id) : `shop_${Date.now()}`,
-            ...payload,
-            address: shopAddress.trim(),
-            status: 'pending',
-          });
-        } catch (_) {}
-      }
-
-      setSuccessMsg('Shop registration submitted successfully for Admin approval!');
-      setShopName('');
-      setTimeout(() => setSuccessMsg(null), 4000);
-    } catch (err: any) {
-      alert(err.message || 'Failed to submit shop');
-    } finally {
-      setSubmitting(false);
+    if (onSubmitShop) {
+      try {
+        await onSubmitShop({
+          id: data && data[0]?.id ? String(data[0].id) : `shop_${Date.now()}`,
+          ...payload
+        });
+      } catch (_) {}
     }
-  };
 
-  // 2. Vehicle Submit Handler Fix
+    setSuccessMsg('Shop registration submitted successfully for Admin approval!');
+    setShopName('');
+    setTimeout(() => setSuccessMsg(null), 4000);
+  } catch (err: any) {
+    alert(err.message || 'Failed to submit shop');
+  } finally {
+    setSubmitting(false);
+  }
+};
+    // 2. Vehicle Submit Handler Fix
   const handleVehicleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
