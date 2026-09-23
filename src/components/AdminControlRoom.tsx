@@ -220,24 +220,30 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               <span className="w-5 h-5 rounded-full bg-orange-600 text-white text-[10px] font-extrabold flex items-center justify-center">
                 {tab.badge}
               </span>
-            )}
-          </button>
-        ))}
-      </div>
+onClick={async () => {
+  setProcessingId(s.id);
+  try {
+    const nextStatus = isInactive ? 'active' : 'inactive';
+    
+    // Direct Supabase Update without depending on parents
+    const { error } = await supabase
+      .from('shop_registrations')
+      .update({ account_status: nextStatus })
+      .eq('id', s.id);
 
-      {/* TAB 1: PARTNERS & PROFILES APPROVAL */}
-      {activeTab === 'partners' && (
-        <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
-            <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
-            <div>
-              <span className="font-bold">Dual-Table Partner Approval Active:</span> Approving a partner here updates both the <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">profiles</code> table (<code className="font-mono">is_approved_by_admin: TRUE</code>) and syncs the <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">service_registrations</code> table with validated UUID syntax.
-            </div>
-          </div>
+    if (error) throw error;
 
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs divide-y divide-slate-100">
-            {profiles.map((p) => {
-              const isApproved = p.is_approved_by_admin === true;
+    // Local UI state ko sync rakhne ke liye parent ko notify karein
+    if (onUpdateShopAccountStatus) {
+      await onUpdateShopAccountStatus(s.id, isInactive ? 'active' : 'inactive');
+    }
+  } catch (err: any) {
+    alert(err.message || 'Status update failed');
+  } finally {
+    setProcessingId(null);
+  }
+})
+          
               const isWorking = processingId === p.id;
 
               return (
