@@ -238,13 +238,11 @@ onClick={async () => {
     if (onUpdateShopAccountStatus) {
       await onUpdateShopAccountStatus(s.id, isInactive ? 'active' : 'inactive');
     }
-  } catch (err: any) {
-    alert(err.message || 'Status update failed');
-  } finally {
-    setProcessingId(null);
-  }
-})
-          
+         } catch (err: any) {
+         console.error("Supabase Error Details:", err); 
+         alert(err.message || 'Status update failed');
+       }
+
               const isWorking = processingId === p.id;
 
               return (
