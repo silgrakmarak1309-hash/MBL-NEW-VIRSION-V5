@@ -535,6 +535,7 @@ export interface ShopRegistration extends LocalAddressFields {
   payout_ifsc_code?: string;
   payout_qr_image_url?: string;
   status: 'pending' | 'approved' | 'rejected' | string;
+  account_status?: 'active' | 'inactive';
   rejection_reason?: string;
   created_at: string;
   verified_at?: string;

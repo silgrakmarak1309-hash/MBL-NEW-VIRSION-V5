@@ -2275,6 +2275,70 @@ setCurrentUser((prev) => {
     });
   };
 
+  const handleUpdateShopAccountStatus = async (shopId: string, status: 'active' | 'inactive') => {
+    const shop = shopRegistrations.find((s) => s.id === shopId);
+    setShopRegistrations((prev) =>
+      prev.map((s) => (s.id === shopId ? { ...s, account_status: status } : s))
+    );
+
+    if (shop) {
+      const targetUserId = shop.user_id;
+      const targetPhone = shop.user_phone || shop.phone;
+      const matchesOwner = (p: UserProfile) =>
+        Boolean(
+          (targetUserId && p.id === targetUserId) ||
+          (targetPhone && p.phone && p.phone.trim() === targetPhone.trim())
+        );
+
+      setProfiles((prev) =>
+        prev.map((p) => (matchesOwner(p) ? { ...p, account_status: status } : p))
+      );
+
+      if (currentUser && matchesOwner(currentUser)) {
+        const updatedUser: UserProfile = { ...currentUser, account_status: status };
+        setCurrentUser(updatedUser);
+        try {
+          localStorage.setItem('mlb_active_user', JSON.stringify(updatedUser));
+        } catch (_) {}
+      }
+    }
+
+    if (supabase) {
+      try {
+        const { error: updErr } = await supabase
+          .from('shop_registrations')
+          .update({ account_status: status })
+          .eq('id', shopId);
+
+        if (updErr) {
+          console.warn('Supabase shop account_status update error:', updErr);
+        }
+
+        if (shop?.user_id) {
+          const validUserId = ensureUuid(shop.user_id);
+          try {
+            await supabase
+              .from('profiles')
+              .update({ account_status: status })
+              .eq('id', validUserId);
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error('Failed to update shop account_status in Supabase:', err);
+      }
+    }
+
+    dispatchAppToast({
+      title: status === 'active' ? 'Shop Account Activated' : 'Shop Account Deactivated',
+      message: `${shop?.shop_name || 'Shop'} account status is now ${status}. ${
+        status === 'inactive'
+          ? 'Partner dashboard access has been blocked.'
+          : 'Partner dashboard access restored.'
+      }`,
+      type: status === 'active' ? 'success' : 'info',
+    });
+  };
+
   const handleApproveVehicleRegistration = async (id: string) => {
     const verifiedTimestamp = new Date().toISOString();
     const expiryIso = new Date(Date.now() + 30 * 86400000).toISOString();
@@ -3760,6 +3824,61 @@ setCurrentUser((prev) => {
     );
   }
 
+  // Check if current user has an inactive shop account
+  const currentUserShop = shopRegistrations.find(
+    (s) =>
+      (s.user_id && s.user_id === currentUser.id) ||
+      (currentUser.phone && (s.phone === currentUser.phone || s.user_phone === currentUser.phone))
+  );
+
+  const isShopAccountInactive = Boolean(
+    (currentUserShop && currentUserShop.account_status === 'inactive') ||
+      currentUser.account_status === 'inactive'
+  );
+
+  const renderShopInactiveBlockedScreen = () => {
+    const supportPhone = settings.find((s) => s.key === 'support_phone')?.value || '+91 98620 12345';
+    return (
+      <div className="max-w-xl mx-auto my-12 p-8 bg-white border border-rose-200 rounded-3xl shadow-sm text-center animate-in fade-in">
+        <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <span className="px-3 py-1 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded-full tracking-wider">
+          Partner Dashboard Blocked
+        </span>
+        <h2 className="text-xl font-black text-slate-900 mt-3 mb-2">
+          Shop Account Is Inactive
+        </h2>
+        <p className="text-xs text-slate-600 mb-6 leading-relaxed max-w-md mx-auto">
+          Your shop account{currentUserShop?.shop_name ? ` (${currentUserShop.shop_name})` : ''} has been set to{' '}
+          <strong className="text-rose-600 uppercase">Inactive</strong> by the Administrator. Access to your partner dashboard, merchant tools, and fleet dispatch is currently restricted.
+        </p>
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 text-xs text-slate-700 flex flex-col sm:flex-row items-center justify-center gap-2">
+          <span>Contact Admin Support to Reactivate:</span>
+          <a
+            href={`tel:${supportPhone}`}
+            className="font-bold text-orange-600 hover:underline flex items-center gap-1"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            {supportPhone}
+          </a>
+        </div>
+        <button
+          onClick={() => {
+            if (currentRoute !== 'user') {
+              navigateTo('user', 'marketplace');
+            } else {
+              setUserActiveTab('marketplace');
+            }
+          }}
+          className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+        >
+          ← Return to Marketplace
+        </button>
+      </div>
+    );
+  };
+
   // =========================================================================
   // ROUTE 3: ISOLATED DELIVERY PARTNER REGISTRATION ('/delivery/register')
   // =========================================================================
@@ -3822,6 +3941,9 @@ setCurrentUser((prev) => {
   // ROUTE 4: ISOLATED DELIVERY ORDERS DASHBOARD ('/delivery/dashboard')
   // =========================================================================
   if (currentRoute === 'delivery_dashboard') {
+    if (isShopAccountInactive) {
+      return renderShopInactiveBlockedScreen();
+    }
     return (
       <DeliveryPartnerDashboard
         currentUser={currentUser}
@@ -3912,6 +4034,7 @@ setCurrentUser((prev) => {
             onSaveSetting={handleSaveSetting}
             onApproveShopRegistration={handleApproveShopRegistration}
             onRejectShopRegistration={handleRejectShopRegistration}
+            onUpdateShopAccountStatus={handleUpdateShopAccountStatus}
             onApproveVehicleRegistration={handleApproveVehicleRegistration}
             onRejectVehicleRegistration={handleRejectVehicleRegistration}
             onApproveServiceRegistration={handleApproveServiceRegistration}
@@ -4630,20 +4753,24 @@ setCurrentUser((prev) => {
 
         {/* VIEW 2.5: SHOP, VEHICLE, DELIVERY & LOCAL SERVICES REGISTRATION */}
         {currentUser && userActiveTab === 'registrations' && (
-          <BusinessVehicleRegistrationView
-            currentUser={currentUser}
-            shopRegistrations={shopRegistrations}
-            vehicleRegistrations={vehicleRegistrations}
-            serviceRegistrations={serviceRegistrations}
-            wallets={wallets}
-            payoutRequests={payoutRequests}
-            onSubmitShop={handleSubmitShop}
-            onSubmitVehicle={handleSubmitVehicle}
-            onSubmitService={handleSubmitServiceRegistration}
-            onSubmitDeliveryPartner={handleRegisterDeliveryPartner}
-            onRequestPayout={handleRequestPayout}
-            onNavigateToDeliveryDashboard={() => setUserActiveTab('delivery_dashboard')}
-          />
+          isShopAccountInactive ? (
+            renderShopInactiveBlockedScreen()
+          ) : (
+            <BusinessVehicleRegistrationView
+              currentUser={currentUser}
+              shopRegistrations={shopRegistrations}
+              vehicleRegistrations={vehicleRegistrations}
+              serviceRegistrations={serviceRegistrations}
+              wallets={wallets}
+              payoutRequests={payoutRequests}
+              onSubmitShop={handleSubmitShop}
+              onSubmitVehicle={handleSubmitVehicle}
+              onSubmitService={handleSubmitServiceRegistration}
+              onSubmitDeliveryPartner={handleRegisterDeliveryPartner}
+              onRequestPayout={handleRequestPayout}
+              onNavigateToDeliveryDashboard={() => setUserActiveTab('delivery_dashboard')}
+            />
+          )
         )}
 
         {/* VIEW 2.7: DELIVERY PARTNER ONBOARDING */}
@@ -4658,19 +4785,23 @@ setCurrentUser((prev) => {
 
         {/* VIEW 2.8: ISOLATED DELIVERY ORDERS DASHBOARD */}
         {currentUser && userActiveTab === 'delivery_dashboard' && (
-          <DeliveryPartnerDashboard
-            currentUser={currentUser}
-            orders={deliveryOrders}
-            payoutRequests={payoutRequests}
-            onAcceptOrder={handleAcceptDeliveryOrder}
-            onUpdateOrderStatus={handleUpdateDeliveryOrderStatus}
-            onCreateSampleOrder={handleCreateSampleDeliveryOrder}
-            onNavigateToRegister={() => setUserActiveTab('delivery_register')}
-            onNavigateHome={() => setUserActiveTab('marketplace')}
-            onRefresh={fetchData}
-            onRequestPayout={handleRequestPayout}
-            onUpdatePartnerProfile={handleRegisterDeliveryPartner}
-          />
+          isShopAccountInactive ? (
+            renderShopInactiveBlockedScreen()
+          ) : (
+            <DeliveryPartnerDashboard
+              currentUser={currentUser}
+              orders={deliveryOrders}
+              payoutRequests={payoutRequests}
+              onAcceptOrder={handleAcceptDeliveryOrder}
+              onUpdateOrderStatus={handleUpdateDeliveryOrderStatus}
+              onCreateSampleOrder={handleCreateSampleDeliveryOrder}
+              onNavigateToRegister={() => setUserActiveTab('delivery_register')}
+              onNavigateHome={() => setUserActiveTab('marketplace')}
+              onRefresh={fetchData}
+              onRequestPayout={handleRequestPayout}
+              onUpdatePartnerProfile={handleRegisterDeliveryPartner}
+            />
+          )
         )}
 
         {/* VIEW 3: MY ADS MANAGEMENT */}
