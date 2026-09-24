@@ -805,7 +805,6 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   );
 })}
 </div>
-)}
 </div>
 );
 };
