@@ -800,9 +800,6 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     >
                       Save
                     </button>
-                  </div>
-                </div>
-              );
             })}
           </div>
         </div>
