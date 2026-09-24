@@ -799,10 +799,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       className="px-4 py-2 bg-slate-900 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition cursor-pointer shrink-0 shadow-xs"
                     >
                       Save
-                    </button>
-            })}
-          </div>
-        </div>
-      )}
+        </button>
+      </div>
+    </div>
   );
+})}
+</div>
+)}
+</div>
+);
 };
