@@ -197,13 +197,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
       {/* Navigation Tabs */}
       <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-none">
         {[
-          { id: 'partners', label: 'Partners & Sellers', icon: Users, badge: profiles.filter(p => !p.is_approved_by_admin).length },
-          { id: 'services', label: 'Service Registrations', icon: Wrench, badge: pendingServices.length },
-          { id: 'listings', label: 'Listings', icon: ShoppingBag, badge: pendingListings.length },
-          { id: 'shops', label: 'Shops', icon: Store, badge: pendingShops.length },
-          { id: 'vehicles', label: 'Vehicles', icon: Truck, badge: pendingVehicles.length },
-          { id: 'recharges', label: 'PRO Recharges', icon: CreditCard, badge: pendingRecharges.length },
-          { id: 'payouts', label: 'Payouts', icon: Wallet, badge: pendingPayouts.length },
+          { id: 'partners', label: 'Partners & Sellers', icon: Users, badge: profiles?.filter((p: any) => !p.is_approved_by_admin)?.length },
+          { id: 'services', label: 'Service Registrations', icon: Wrench, badge: pendingServices?.length },
+          { id: 'listings', label: 'Listings', icon: ShoppingBag, badge: pendingListings?.length },
+          { id: 'shops', label: 'Shops', icon: Store, badge: pendingShops?.length },
+          { id: 'vehicles', label: 'Vehicles', icon: Truck, badge: pendingVehicles?.length },
+          { id: 'recharges', label: 'PRO Recharges', icon: CreditCard, badge: pendingRecharges?.length },
+          { id: 'payouts', label: 'Payouts', icon: Wallet, badge: pendingPayouts?.length },
           { id: 'settings', label: 'Settings', icon: Settings },
         ].map((tab) => (
           <button
