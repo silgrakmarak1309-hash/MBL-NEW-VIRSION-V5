@@ -221,29 +221,35 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               <span className="w-5 h-5 rounded-full bg-orange-600 text-white text-[10px] font-extrabold flex items-center justify-center">
                 {tab.badge}
               </span>
-onClick={async () => {
-  setProcessingId(s.id);
-  try {
-    const nextStatus = isInactive ? 'active' : 'inactive';
-    
-    // Direct Supabase Update without depending on parents
-    const { error } = await supabase
-      .from('shop_registrations')
-      .update({ account_status: nextStatus })
-      .eq('id', s.id);
+  )}
+  </button>
+))}
+</div>
 
-    if (error) throw error;
+<div className="space-y-4">
+  {services?.map((p: any) => {
+    const isInactive = p.account_status === 'inactive';
 
-    // Local UI state ko sync rakhne ke liye parent ko notify karein
-    if (onUpdateShopAccountStatus) {
-      await onUpdateShopAccountStatus(s.id, isInactive ? 'active' : 'inactive');
-    }
-         } catch (err: any) {
-         console.error("Supabase Error Details:", err); 
-         alert(err.message || 'Status update failed');
-       }
+    const handleStatusUpdate = async () => {
+      setProcessingId(p.id);
+      try {
+        const nextStatus = isInactive ? 'active' : 'inactive';
+        const { error } = await supabase
+          .from('shop_registrations')
+          .update({ account_status: nextStatus })
+          .eq('id', p.id);
 
-              const isWorking = processingId === p.id;
+        if (error) throw error;
+
+        if (onUpdateShopAccountStatus) {
+          await onUpdateShopAccountStatus(p.id, isInactive ? 'active' : 'inactive');
+        }
+      } catch (err: any) {
+        console.error("Supabase Error Details:", err);
+        alert(err.message || 'Status update failed');
+      }
+    };       
+  const isWorking = processingId === p.id;
 
               return (
                 <div key={p.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition">
